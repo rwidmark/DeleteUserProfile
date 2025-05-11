@@ -1,0 +1,84 @@
+@ECHO OFF
+setlocal enableextensions enabledelayedexpansion
+ECHO              -----------------
+ECHO ----------------------------------------------                                      
+ECHO              MOTASLMOTASLMOT  .COM
+ECHO           888MOTASLMOTASLMOT  .COM
+ECHO         MOTASL8
+ECHO        MOTASL                 .COM
+ECHO       MOTASL                  .COM
+ECHO       MOTASL
+ECHO       MOTASL                 MOTASL8
+ECHO        MOTASL              MOTASL88
+ECHO         MOTASL8          MOTASL88
+ECHO           MOTASLMOTASLMOTASLMOT         
+ECHO               MOTASLMOTASL8
+ECHO ----------------------------------------------
+ECHO              -----------------
+ECHO Hi, This script is used to create a timer to shutdown or restart your computer after a specified period of time
+ECHO Menu:
+ECHO  (1) Sutdown
+ECHO  (2) Restart
+ECHO  (3) Sleep
+ECHO  (4) Log off
+ECHO  (C) Cancel
+
+CHOICE /C 1234C /M "Choose a litter from menu"
+IF ERRORLEVEL 1 SET method="Shutdown"
+IF ERRORLEVEL 2 SET method="Restart"
+IF ERRORLEVEL 3 SET method="Sleep"
+IF ERRORLEVEL 3 SET method="LogOff"
+IF ERRORLEVEL 5 exit
+
+set /p param="Enter time in Minuts: "
+ 
+SET "var="&for /f "delims=0123456789" %%i in ("%param%") do set var=%%i
+if defined var (
+   ECHO Invalid time value
+   pause
+   exit
+   )  
+   
+
+IF [%param%] == [] ( 
+   ECHO Please Enter time value
+   pause
+   exit
+   )
+set /a param= %param%*60
+
+for /l %%N in (%param%  -1 1) do (
+  set /a "min=%%N/60, sec=%%N%%60, n-=1"
+  if !sec! lss 10 set sec=0!sec!
+  cls
+   
+  
+  choice /c:CN1 /n /m "!method! in !min!:!sec! - Press N to !method! Now, or C to Cancel. " /t:1 /d:1
+  if not errorlevel 3 goto :break
+)
+cls
+echo !method! in 0:00 - Press N to !method! Now, or C to Cancel.
+:break
+if errorlevel 2 ( 
+echo !method!.. 
+
+if !method! EQU  "Shutdown" (
+shutdown /s
+pause
+)
+if !method! EQU  "Restart" (
+shutdown /r
+pause
+)
+if !method! EQU  "LogOff" (
+shutdown /l
+pause
+)
+
+if !method! EQU  "Sleep" (
+rundll32.exe powrprof.dll,SetSuspendState
+pause
+)
+) 
+else
+exit
