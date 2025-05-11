@@ -63,7 +63,7 @@ This will return all of the user profiles saved on the remote computers named Wi
 
 ### Remove-RSUserProfile
 If you want to use this on a remote computer just add the parameter ```-ComputerName <COMPUTERNAME>``` in the commands below.  
-  
+  ñ 
 ```
 Remove-RSUserProfile -All
 ```
