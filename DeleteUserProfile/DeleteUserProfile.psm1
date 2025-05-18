@@ -27,9 +27,9 @@
         https://github.com/rstolpe/DeleteUserProfile/blob/main/README.md
 
         .NOTES
-        Author:         Robin Stolpe
-        Mail:           robin@stolpe.io
-        Blog:           https://stolpe.io
+        Author:         Robin Widmark
+        Mail:           robin@widmark.dev
+        Blog:           https://widmark.dev
         Twitter:        https://twitter.com/rstolpes
         Linkedin:       https://www.linkedin.com/in/rstolpe/
         GitHub:         https://github.com/rstolpe
@@ -165,9 +165,9 @@ Function Remove-RSUserProfile {
         https://github.com/rstolpe/DeleteUserProfile/blob/main/README.md
 
         .NOTES
-        Author:         Robin Stolpe
-        Mail:           robin@stolpe.io
-        Blog:           https://stolpe.io
+        Author:         Robin Widmark
+        Mail:           robin@widmark.dev
+        Blog:           https://widmark.dev
         Twitter:        https://twitter.com/rstolpes
         Linkedin:       https://www.linkedin.com/in/rstolpe/
         GitHub:         https://github.com/rstolpe

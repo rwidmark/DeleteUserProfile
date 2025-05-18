@@ -10,7 +10,7 @@ This module will let you show all of the user profiles that are saved on a local
 You can also return the user profiles from multiple computers at the same time.  
 The special windows profiles are excluded.  
   
-I have also made a blog post of it at my [blog](https://stolpe.io/remove-user-profiles-from-windows/)
+I have also made a blog post of it at my [blog](https://widmark.dev/remove-user-profiles-from-windows/)
 
 ## This module will do the following
 - Return all of the user profiles from a remote or local computer
@@ -22,7 +22,7 @@ I have also made a blog post of it at my [blog](https://stolpe.io/remove-user-pr
 - The special windows profiles are excluded
 
 # Links
-* [Blog](https://stolpe.io)
+* [Blog](https://widmark.dev)
 * [Twitter](https://twitter.com/rstolpes)
 * [LinkedIn](https://www.linkedin.com/in/rstolpe/)
 * [PowerShell Gallery](https://www.powershellgallery.com/profiles/rstolpe)
