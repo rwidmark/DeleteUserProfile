@@ -1,7 +1,7 @@
 ﻿Function Get-RSUserProfile {
     <#
         .SYNOPSIS
-        Return all user profiles that are saved on a computer
+        Return all user profiles that are saved on a computer.
 
         .DESCRIPTION
         Return all user profiles that are saved on a local or remote computer and you can also delete one or all of the user profiles, the special windows profiles are excluded.
