@@ -1,4 +1,4 @@
-![GitHub](https://img.shields.io/github/license/rstolpe/DeleteUserProfile?style=plastic)  
+![GitHub](https://img.shields.io/github/license/rwidmark/DeleteUserProfile?style=plastic)  
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/rstolpe/DeleteUserProfile?sort=semver&style=plastic)  ![Last release](https://img.shields.io/github/release-date/rstolpe/DeleteUserProfile?style=plastic)
 ![GitHub last commit](https://img.shields.io/github/last-commit/rstolpe/DeleteUserProfile?style=plastic)  
 ![PSGallery downloads](https://img.shields.io/powershellgallery/dt/DeleteUserProfile?style=plastic)  
