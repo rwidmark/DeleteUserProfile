@@ -24,16 +24,17 @@
         # This will return all of the user profiles saved on the remote computers named Win11-Test and Win10
 
         .LINK
-        https://github.com/rstolpe/DeleteUserProfile/blob/main/README.md
+        https://github.com/rwidmark/DeleteUserProfile/blob/main/README.md
 
         .NOTES
         Author:         Robin Widmark
         Mail:           robin@widmark.dev
-        Blog:           https://widmark.dev
-        Twitter:        https://twitter.com/rstolpes
-        Linkedin:       https://www.linkedin.com/in/rstolpe/
-        GitHub:         https://github.com/rstolpe
-        PSGallery:      https://www.powershellgallery.com/profiles/rstolpe
+        Website/Blog:   https://widmark.dev
+        X:              https://x.com/widmark_robin
+        Mastodon:       https://mastodon.social/@rwidmark
+		YouTube:		https://www.youtube.com/@rwidmark
+        Linkedin:       https://www.linkedin.com/in/rwidmark/
+        GitHub:         https://github.com/rwidmark
     #>
 
     [CmdletBinding()]
@@ -162,16 +163,17 @@ Function Remove-RSUserProfile {
         # This will delete only user profile "User1" and "User2" from the remote computer named "Win11-Test" if the profile are not loaded
 
         .LINK
-        https://github.com/rstolpe/DeleteUserProfile/blob/main/README.md
+        https://github.com/rwidmark/DeleteUserProfile/blob/main/README.md
 
         .NOTES
         Author:         Robin Widmark
         Mail:           robin@widmark.dev
-        Blog:           https://widmark.dev
-        Twitter:        https://twitter.com/rstolpes
-        Linkedin:       https://www.linkedin.com/in/rstolpe/
-        GitHub:         https://github.com/rstolpe
-        PSGallery:      https://www.powershellgallery.com/profiles/rstolpe
+        Website/Blog:   https://widmark.dev
+        X:              https://x.com/widmark_robin
+        Mastodon:       https://mastodon.social/@rwidmark
+		YouTube:		https://www.youtube.com/@rwidmark
+        Linkedin:       https://www.linkedin.com/in/rwidmark/
+        GitHub:         https://github.com/rwidmark
     #>
 
     [CmdletBinding()]
