@@ -1,9 +1,9 @@
 ![GitHub](https://img.shields.io/github/license/rwidmark/DeleteUserProfile?style=plastic)  
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/rstolpe/DeleteUserProfile?sort=semver&style=plastic)  ![Last release](https://img.shields.io/github/release-date/rstolpe/DeleteUserProfile?style=plastic)
-![GitHub last commit](https://img.shields.io/github/last-commit/rstolpe/DeleteUserProfile?style=plastic)  
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/rwidmark/DeleteUserProfile?sort=semver&style=plastic)  ![Last release](https://img.shields.io/github/release-date/rwidmark/DeleteUserProfile?style=plastic)
+![GitHub last commit](https://img.shields.io/github/last-commit/rwidmark/DeleteUserProfile?style=plastic)  
 ![PSGallery downloads](https://img.shields.io/powershellgallery/dt/DeleteUserProfile?style=plastic)  
   
-![Twitter](https://img.shields.io/twitter/follow/rstolpes)
+![Twitter](https://img.shields.io/twitter/follow/widmark_robin)
 
 # DeleteUserProfile
 This module will let you show all of the user profiles that are saved on a local or remote computer, you can also delete one specific user profile or all of the profiles.  
@@ -22,14 +22,17 @@ I have also made a blog post of it at my [blog](https://widmark.dev/remove-user-
 - The special windows profiles are excluded
 
 # Links
-* [Blog](https://widmark.dev)
-* [Twitter](https://twitter.com/rstolpes)
-* [LinkedIn](https://www.linkedin.com/in/rstolpe/)
-* [PowerShell Gallery](https://www.powershellgallery.com/profiles/rstolpe)
+* [My PowerShell Collection](https://github.com/rwidmark/PSCollection)
+* [Webpage/Blog](https://widmark.dev)
+* [X](https://twitter.com/widmark_robin)
+* [Mastodon](https://mastodon.social/@rwidmark)
+* [YouTube](https://www.youtube.com/@rwidmark)
+* [LinkedIn](https://www.linkedin.com/in/rwidmark/)
+* [GitHub](https://github.com/rwidmark)
 
 ## Dependencies
 - WinRM must be activated on the computer (Guide for it coming soon)
-- Module also require that you have my service module installed, [rsServiceModule](https://github.com/rstolpe/rsServiceModule)
+- Module also require that you have my service module installed, [rsServiceModule](https://github.com/rwidmark/rsServiceModule)
 
 ## Install
 Install for current user
@@ -52,9 +55,9 @@ Get-RSUserProfile
 Return all user profiles that are saved on the local computer
 
 ```
-Get-RSUserProfile -Exclude "Frank", "rstolpe"
+Get-RSUserProfile -Exclude "Frank", "rwidmark"
 ```
-This will return all of the user profiles saved on the local machine except user profiles that are named Frank and rstolpe
+This will return all of the user profiles saved on the local machine except user profiles that are named Frank and rwidmark
 
 ```
 Get-RSUserProfile -ComputerName "Win11-Test", "Win10"
