@@ -323,8 +323,16 @@ Function Remove-RSUserProfile {
         $targetUsers = if ($All) { $profileLookup.Keys | Sort-Object } else { $UserName | Sort-Object -Unique }
 
         foreach ($profileName in $targetUsers) {
-            $checkProfile = Confirm-RSProfile -UserName $profileName -ProfileData $profileLookup -Exclude $Exclude
+            $confirmProfileParams = @{
+                UserName    = $profileName
+                ProfileData = $profileLookup
+            }
 
+            if ($PSBoundParameters.ContainsKey('Exclude')) {
+                $confirmProfileParams.Exclude = $Exclude
+            }
+
+            $checkProfile = Confirm-RSProfile @confirmProfileParams
             if ($checkProfile.ReturnCode -ne 0) {
                 [void]$jobReturnMessage.Add($checkProfile.Message)
                 continue
