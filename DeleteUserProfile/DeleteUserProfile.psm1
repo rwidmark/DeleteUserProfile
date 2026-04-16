@@ -7,13 +7,9 @@ Function Test-RSServiceModule {
 
     process {
         try {
-            $serviceModule = Get-InstalledModule -Name "rsServiceModule" -ErrorAction Stop
+            Get-InstalledModule -Name "rsServiceModule" -ErrorAction Stop | Out-Null
         }
         catch {
-            throw "You must have rsServiceModule installed to use this function"
-        }
-
-        if ($null -eq $serviceModule) {
             throw "You must have rsServiceModule installed to use this function"
         }
     }
@@ -108,6 +104,10 @@ Function Get-RSUserProfile {
                             }
                             if ($timeSpan.Minutes -gt 0) {
                                 $notUsedFor.Add("minutes", "$($timeSpan.Minutes)")
+                            }
+
+                            if ($notUsedFor.Count -eq 0) {
+                                $notUsedFor.Add("minutes", "0")
                             }
                         }
 
@@ -255,7 +255,7 @@ Function Remove-RSUserProfile {
                             try {
                                 Write-Output "Deleting user profile $UserName..."
                                 $Profile | Remove-CimInstance -ErrorAction Stop
-                                Write-Output "User profile $UserName are now deleted!"
+                                Write-Output "User profile $UserName is now deleted!"
                             }
                             catch {
                                 Write-Error "${UserName}: $($PSItem.Exception.Message)"
@@ -275,12 +275,6 @@ Function Remove-RSUserProfile {
 
                     if ($checkProfile.ReturnCode -eq 0) {
                         $getProfile = $getAllProfiles | Where-Object { (Split-Path -Path $_.LocalPath -Leaf) -eq $_profile } | Select-Object -First 1
-
-                        if ($null -eq $getProfile) {
-                            [void]$jobReturnMessage.Add("User profile $($_profile) does not exist on the computer")
-                            continue
-                        }
-
                         $job = Start-ThreadJob -Name $_profile -ThrottleLimit 50 -ArgumentList $getProfile, $_profile -ScriptBlock {
                             param(
                                 $Profile,
@@ -290,7 +284,7 @@ Function Remove-RSUserProfile {
                             try {
                                 Write-Output "Deleting user profile $UserName..."
                                 $Profile | Remove-CimInstance -ErrorAction Stop
-                                Write-Output "The user profile $UserName are now deleted!"
+                                Write-Output "The user profile $UserName is now deleted!"
                             }
                             catch {
                                 Write-Error "${UserName}: $($PSItem.Exception.Message)"
@@ -342,27 +336,22 @@ Function Confirm-RSProfile {
     )
 
     begin {
-        $excludeLookup = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-
-        foreach ($excludedUser in $Exclude) {
-            [void]$excludeLookup.Add($excludedUser)
-        }
     }
 
     process {
         $checkExists = $ProfileData | Where-Object { (Split-Path -Path $_.LocalPath -Leaf) -eq $UserName } | Select-Object -First 1
-        $checkExclude = $excludeLookup.Contains($UserName)
+        $checkExclude = @($Exclude) -contains $UserName
 
         if ($null -ne $checkExists -and -not $checkExclude) {
             if ($checkExists.Loaded -eq $true) {
-                Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) are loaded can't remove it"
+                Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) is loaded and can't be removed"
             }
             else {
-                Get-ReturnMessageTemplate -ReturnType Success -Message "User profile $($UserName) exists and are not loaded"
+                Get-ReturnMessageTemplate -ReturnType Success -Message "User profile $($UserName) exists and is not loaded"
             }
         }
         elseif ($null -ne $checkExists -and $checkExclude) {
-            Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) are excluded and will not be deleted"
+            Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) is excluded and will not be deleted"
         }
         else {
             Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) does not exist on the computer"
