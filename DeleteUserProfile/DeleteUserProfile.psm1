@@ -117,7 +117,7 @@ Function Get-RSUserProfile {
         Website/Blog:   https://widmark.dev
         X:              https://x.com/widmark_robin
         Mastodon:       https://mastodon.social/@rwidmark
-YouTube:https://www.youtube.com/@rwidmark
+        YouTube:        https://www.youtube.com/@rwidmark
         Linkedin:       https://www.linkedin.com/in/rwidmark/
         GitHub:         https://github.com/rwidmark
     #>
@@ -277,12 +277,12 @@ Function Remove-RSUserProfile {
         Website/Blog:   https://widmark.dev
         X:              https://x.com/widmark_robin
         Mastodon:       https://mastodon.social/@rwidmark
-YouTube:https://www.youtube.com/@rwidmark
+        YouTube:        https://www.youtube.com/@rwidmark
         Linkedin:       https://www.linkedin.com/in/rwidmark/
         GitHub:         https://github.com/rwidmark
     #>
 
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High', DefaultParameterSetName = 'ByUserName')]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High", DefaultParameterSetName = "ByUserName")]
     Param(
         [Parameter(Mandatory = $false, HelpMessage = "Enter the computer name that you want to delete user profiles from.")]
         [ValidateNotNullOrEmpty()]
@@ -329,7 +329,7 @@ YouTube:https://www.youtube.com/@rwidmark
                 continue
             }
 
-            $target = "$ComputerName\\$profileName"
+            $target = "$ComputerName\$profileName"
 
             if (-not $PSCmdlet.ShouldProcess($target, "Remove user profile")) {
                 continue
