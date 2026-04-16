@@ -1,6 +1,9 @@
 Function Test-RSServiceModule {
     [CmdletBinding()]
-    Param()
+    Param(
+        [Parameter(Mandatory = $false)]
+        [string]$CallerName = "This function"
+    )
 
     begin {
     }
@@ -10,7 +13,7 @@ Function Test-RSServiceModule {
             Get-InstalledModule -Name "rsServiceModule" -ErrorAction Stop | Out-Null
         }
         catch {
-            throw "You must have rsServiceModule installed to use this function"
+            throw "$CallerName requires rsServiceModule to be installed"
         }
     }
 
@@ -64,7 +67,7 @@ Function Get-RSUserProfile {
     )
 
     begin {
-        Test-RSServiceModule
+        Test-RSServiceModule -CallerName $MyInvocation.MyCommand.Name
         $jobGetProfile = [System.Collections.Generic.List[object]]::new()
     }
 
@@ -86,7 +89,7 @@ Function Get-RSUserProfile {
                         Sort-Object -Descending -Property LastUseTime
 
                     if ($null -eq $getUserData) {
-                        Write-Output "No user profiles found on $ComputerName"
+                        Write-Verbose "No user profiles found on $ComputerName"
                         return
                     }
 
@@ -221,7 +224,7 @@ Function Remove-RSUserProfile {
     )
 
     begin {
-        Test-RSServiceModule
+        Test-RSServiceModule -CallerName $MyInvocation.MyCommand.Name
         $jobReturnMessage = [System.Collections.Generic.List[string]]::new()
         $jobDelete = [System.Collections.Generic.List[object]]::new()
     }
@@ -253,9 +256,9 @@ Function Remove-RSUserProfile {
                             )
 
                             try {
-                                Write-Output "Deleting user profile $UserName..."
+                                Write-Verbose "Deleting user profile $UserName..."
                                 $Profile | Remove-CimInstance -ErrorAction Stop
-                                Write-Output "User profile $UserName is now deleted!"
+                                Write-Verbose "User profile $UserName is now deleted!"
                             }
                             catch {
                                 Write-Error "${UserName}: $($PSItem.Exception.Message)"
@@ -275,6 +278,12 @@ Function Remove-RSUserProfile {
 
                     if ($checkProfile.ReturnCode -eq 0) {
                         $getProfile = $getAllProfiles | Where-Object { (Split-Path -Path $_.LocalPath -Leaf) -eq $_profile } | Select-Object -First 1
+
+                        if ($null -eq $getProfile) {
+                            [void]$jobReturnMessage.Add("User profile $($_profile) could not be resolved for deletion")
+                            continue
+                        }
+
                         $job = Start-ThreadJob -Name $_profile -ThrottleLimit 50 -ArgumentList $getProfile, $_profile -ScriptBlock {
                             param(
                                 $Profile,
@@ -282,9 +291,9 @@ Function Remove-RSUserProfile {
                             )
 
                             try {
-                                Write-Output "Deleting user profile $UserName..."
+                                Write-Verbose "Deleting user profile $UserName..."
                                 $Profile | Remove-CimInstance -ErrorAction Stop
-                                Write-Output "The user profile $UserName is now deleted!"
+                                Write-Verbose "The user profile $UserName is now deleted!"
                             }
                             catch {
                                 Write-Error "${UserName}: $($PSItem.Exception.Message)"
@@ -344,7 +353,7 @@ Function Confirm-RSProfile {
 
         if ($null -ne $checkExists -and -not $checkExclude) {
             if ($checkExists.Loaded -eq $true) {
-                Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) is loaded and can't be removed"
+                Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) is loaded and cannot be removed"
             }
             else {
                 Get-ReturnMessageTemplate -ReturnType Success -Message "User profile $($UserName) exists and is not loaded"
