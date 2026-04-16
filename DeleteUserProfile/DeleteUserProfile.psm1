@@ -122,7 +122,7 @@ Function Get-RSUserProfile {
                     }
                 }
                 catch {
-                    Write-Error "$ComputerName: $($PSItem.Exception.Message)"
+                    Write-Error "${ComputerName}: $($PSItem.Exception.Message)"
                 }
                 finally {
                     if ($null -ne $cimSession) {
@@ -235,7 +235,7 @@ Function Remove-RSUserProfile {
             $getAllProfiles = Get-CimInstance -CimSession $cimSession -ClassName Win32_UserProfile -ErrorAction Stop | Where-Object { $_.Special -eq $false }
         }
         catch {
-            Write-Error "$ComputerName: $($PSItem.Exception.Message)"
+            Write-Error "${ComputerName}: $($PSItem.Exception.Message)"
             return
         }
 
@@ -258,7 +258,7 @@ Function Remove-RSUserProfile {
                                 Write-Output "User profile $UserName are now deleted!"
                             }
                             catch {
-                                Write-Error "$UserName: $($PSItem.Exception.Message)"
+                                Write-Error "${UserName}: $($PSItem.Exception.Message)"
                             }
                         }
 
@@ -293,7 +293,7 @@ Function Remove-RSUserProfile {
                                 Write-Output "The user profile $UserName are now deleted!"
                             }
                             catch {
-                                Write-Error "$UserName: $($PSItem.Exception.Message)"
+                                Write-Error "${UserName}: $($PSItem.Exception.Message)"
                             }
                         }
 
