@@ -32,7 +32,6 @@ I have also made a blog post of it at my [blog](https://widmark.dev/remove-user-
 
 ## Dependencies
 - WinRM must be activated on the computer (Guide for it coming soon)
-- Module also require that you have my service module installed, [rsServiceModule](https://github.com/rwidmark/rsServiceModule)
 
 ## Install
 Install for current user
@@ -64,6 +63,11 @@ Get-RSUserProfile -ComputerName "Win11-Test", "Win10"
 ```
 This will return all of the user profiles saved on the remote computers named Win11-Test and Win10
 
+```
+Get-RSUserProfile -Verbose
+```
+This will show verbose status messages while the user profiles are collected
+
 ### Remove-RSUserProfile
 If you want to use this on a remote computer just add the parameter ```-ComputerName <COMPUTERNAME>``` in the commands below.  
   
@@ -81,3 +85,8 @@ This will delete all of the user profiles except user profile User1 and User2 on
 Remove-RSUserProfile -UserName "User1", "User2"
 ```
 This will delete only user profile "User1" and "User2" from the local computer where you run the script from.
+
+```
+Remove-RSUserProfile -UserName "User1" -WhatIf
+```
+This will show what would be deleted without removing the user profile
