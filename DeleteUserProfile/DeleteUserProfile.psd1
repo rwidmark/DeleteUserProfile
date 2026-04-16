@@ -140,7 +140,7 @@
             RequireLicenseAcceptance   = $false
 
             # External dependent modules of this module
-            ExternalModuleDependencies = "rsServiceModule"
+            ExternalModuleDependencies = @()
 
         } # End of PSData hashtable
 

@@ -1,16 +1,84 @@
-Function Test-RSServiceModule {
+Function New-RSReturnMessage {
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $false)]
-        [string]$CallerName = "This function"
+        [Parameter(Mandatory = $true, HelpMessage = "Specify if the operation result is a success or an error.")]
+        [ValidateSet("Success", "Error")]
+        [string]$ReturnType,
+        [Parameter(Mandatory = $true, HelpMessage = "Specify the message that should be returned to the caller.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Message
     )
 
     process {
-        try {
-            Get-InstalledModule -Name "rsServiceModule" -ErrorAction Stop | Out-Null
+        [PSCustomObject]@{
+            ReturnCode = if ($ReturnType -eq "Success") { 0 } else { 1 }
+            ReturnType = $ReturnType
+            Message    = $Message
         }
-        catch {
-            throw "$CallerName requires rsServiceModule to be installed"
+    }
+}
+
+Function Get-RSProfileUserName {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true, HelpMessage = "Specify the profile path to resolve the user name from.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$LocalPath
+    )
+
+    process {
+        Split-Path -Path $LocalPath -Leaf
+    }
+}
+
+Function Get-RSProfileLookup {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true, HelpMessage = "Specify the profile collection that should be indexed by user name.")]
+        [ValidateNotNull()]
+        $ProfileData
+    )
+
+    process {
+        $profileLookup = @{}
+
+        foreach ($profile in @($ProfileData)) {
+            if ($null -eq $profile.LocalPath) {
+                continue
+            }
+
+            $userName = Get-RSProfileUserName -LocalPath $profile.LocalPath
+
+            if (-not [string]::IsNullOrWhiteSpace($userName)) {
+                $profileLookup[$userName] = $profile
+            }
+        }
+
+        $profileLookup
+    }
+}
+
+Function Get-RSUserProfileInventory {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true, HelpMessage = "Specify the computer name that should be queried for user profiles.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$ComputerName
+    )
+
+    process {
+        $cimSession = $null
+
+        try {
+            Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
+            $cimSession = New-CimSession -ComputerName $ComputerName -ErrorAction Stop
+
+            @(Get-CimInstance -CimSession $cimSession -ClassName Win32_UserProfile -ErrorAction Stop | Where-Object { -not $_.Special })
+        }
+        finally {
+            if ($null -ne $cimSession) {
+                $cimSession | Remove-CimSession -ErrorAction SilentlyContinue
+            }
         }
     }
 }
@@ -49,82 +117,77 @@ Function Get-RSUserProfile {
         Website/Blog:   https://widmark.dev
         X:              https://x.com/widmark_robin
         Mastodon:       https://mastodon.social/@rwidmark
-		YouTube:		https://www.youtube.com/@rwidmark
+        YouTube:        https://www.youtube.com/@rwidmark
         Linkedin:       https://www.linkedin.com/in/rwidmark/
         GitHub:         https://github.com/rwidmark
     #>
 
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $false, HelpMessage = "Enter name of the computer or computers you want to collect user profiles from, multiple computer names are supported.")]
+        [Parameter(Mandatory = $false, HelpMessage = "Enter one or more computer names to collect user profiles from.")]
+        [ValidateNotNullOrEmpty()]
         [string[]]$ComputerName = "localhost"
     )
 
     begin {
-        Test-RSServiceModule -CallerName $MyInvocation.MyCommand.Name
         $jobGetProfile = [System.Collections.Generic.List[object]]::new()
     }
 
     process {
-        foreach ($currentComputer in $ComputerName) {
-            $job = Start-ThreadJob -Name $currentComputer -ThrottleLimit 50 -ArgumentList $currentComputer -ScriptBlock {
+        foreach ($currentComputer in ($ComputerName | Sort-Object -Unique)) {
+            Write-Verbose "Starting user profile lookup on $currentComputer"
+
+            $job = Start-ThreadJob -Name $currentComputer -ThrottleLimit 50 -ArgumentList $currentComputer, $VerbosePreference -ScriptBlock {
                 param(
-                    [string]$ComputerName
+                    [string]$ComputerName,
+                    [System.Management.Automation.ActionPreference]$PassedVerbosePreference
                 )
 
+                $VerbosePreference = $PassedVerbosePreference
                 $cimSession = $null
 
                 try {
-                    try {
-                        Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
-                    }
-                    catch {
-                        throw "Failed to establish WSMan connection to $ComputerName"
-                    }
-
+                    # Capture one reference time per computer so every profile in the same batch uses the same age calculation.
+                    $currentDate = Get-Date
+                    Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
                     $cimSession = New-CimSession -ComputerName $ComputerName -ErrorAction Stop
+                    $getUserData = @(Get-CimInstance -CimSession $cimSession -ClassName Win32_UserProfile -ErrorAction Stop |
+                        Where-Object { -not $_.Special } |
+                        Sort-Object -Descending -Property LastUseTime)
 
-                    $getUserData = Get-CimInstance -CimSession $cimSession -ClassName Win32_UserProfile -ErrorAction Stop |
-                        Where-Object { $_.Special -eq $false } |
-                        Sort-Object -Descending -Property LastUseTime
-
-                    if ($null -eq $getUserData) {
+                    if ($getUserData.Count -eq 0) {
                         Write-Verbose "No user profiles found on $ComputerName"
                         return
                     }
 
-                    foreach ($_profile in $getUserData) {
-                        $notUsedFor = [ordered]@{}
+                    foreach ($profile in $getUserData) {
+                        $notUsedFor = $null
 
-                        if ($null -ne $_profile.LastUseTime) {
-                            $timeSpan = New-TimeSpan -Start $_profile.LastUseTime -End (Get-Date)
+                        if ($null -ne $profile.LastUseTime) {
+                            $timeSpan = New-TimeSpan -Start $profile.LastUseTime -End $currentDate
+                            $notUsedFor = [ordered]@{}
 
                             if ($timeSpan.Days -gt 0) {
-                                $notUsedFor.Add("days", "$($timeSpan.Days)")
+                                $notUsedFor.days = [string]$timeSpan.Days
                             }
                             if ($timeSpan.Hours -gt 0) {
-                                $notUsedFor.Add("hours", "$($timeSpan.Hours)")
+                                $notUsedFor.hours = [string]$timeSpan.Hours
                             }
                             if ($timeSpan.Minutes -gt 0) {
-                                $notUsedFor.Add("minutes", "$($timeSpan.Minutes)")
+                                $notUsedFor.minutes = [string]$timeSpan.Minutes
                             }
-
-                            if (
-                                $timeSpan.Days -eq 0 -and
-                                $timeSpan.Hours -eq 0 -and
-                                $timeSpan.Minutes -eq 0
-                            ) {
-                                $notUsedFor.Add("minutes", "0")
+                            if ($notUsedFor.Count -eq 0) {
+                                $notUsedFor.minutes = "0"
                             }
                         }
 
                         [PSCustomObject]@{
                             Computer  = $ComputerName
-                            UserName  = if ($null -ne $_profile.LocalPath) { Split-Path -Path $_profile.LocalPath -Leaf }
-                            LocalPath = if ($null -ne $_profile.LocalPath) { $_profile.LocalPath }
-                            LastUsed  = if ($null -ne $_profile.LastUseTime) { ($_profile.LastUseTime -as [DateTime]).ToString("yyyy-MM-dd HH:mm") }
-                            Loaded    = $_profile.Loaded
-                            NotUsed   = if ($notUsedFor.Count -gt 0) { $notUsedFor } else { "N/A" }
+                            UserName  = if ($null -ne $profile.LocalPath) { Split-Path -Path $profile.LocalPath -Leaf }
+                            LocalPath = $profile.LocalPath
+                            LastUsed  = if ($null -ne $profile.LastUseTime) { ([datetime]$profile.LastUseTime).ToString("yyyy-MM-dd HH:mm") }
+                            Loaded    = $profile.Loaded
+                            NotUsed   = if ($null -ne $notUsedFor) { $notUsedFor } else { "N/A" }
                         }
                     }
                 }
@@ -148,6 +211,7 @@ Function Get-RSUserProfile {
         }
 
         try {
+            Write-Verbose "Waiting for $($jobGetProfile.Count) user profile lookup job(s) to complete"
             Receive-Job -Job $jobGetProfile -AutoRemoveJob -Wait -ErrorAction Stop
         }
         catch {
@@ -201,6 +265,10 @@ Function Remove-RSUserProfile {
         Remove-RSUserProfile -ComputerName "Win11-test" -UserName "User1", "User2"
         # This will delete only user profile "User1" and "User2" from the remote computer named "Win11-Test" if the profile are not loaded
 
+        .EXAMPLE
+        Remove-RSUserProfile -UserName "User1" -WhatIf
+        # This will show what would be removed without deleting the profile
+
         .LINK
         https://github.com/rwidmark/DeleteUserProfile/blob/main/README.md
 
@@ -210,132 +278,85 @@ Function Remove-RSUserProfile {
         Website/Blog:   https://widmark.dev
         X:              https://x.com/widmark_robin
         Mastodon:       https://mastodon.social/@rwidmark
-		YouTube:		https://www.youtube.com/@rwidmark
+        YouTube:        https://www.youtube.com/@rwidmark
         Linkedin:       https://www.linkedin.com/in/rwidmark/
         GitHub:         https://github.com/rwidmark
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High", DefaultParameterSetName = "ByUserName")]
     Param(
-        [Parameter(Mandatory = $false, HelpMessage = "Enter computer name for the computer you want to delete user profiles from")]
+        [Parameter(Mandatory = $false, HelpMessage = "Enter the computer name that you want to delete user profiles from.")]
+        [ValidateNotNullOrEmpty()]
         [string]$ComputerName = "localhost",
-        [Parameter(Mandatory = $false, HelpMessage = "Enter the name of the user profiles that you want to delete, multiple names are supported")]
+        [Parameter(Mandatory = $true, ParameterSetName = 'ByUserName', HelpMessage = "Enter one or more user profile names that you want to delete.")]
+        [ValidateNotNullOrEmpty()]
         [string[]]$UserName,
-        [Parameter(Mandatory = $false, HelpMessage = "Use this switch if you want to delete all user profiles on the computer")]
-        [switch]$All = $false,
-        [Parameter(Mandatory = $false, HelpMessage = "Enter username of the user profiles that you want to exclude, multiple names are supported")]
+        [Parameter(Mandatory = $true, ParameterSetName = 'AllProfiles', HelpMessage = "Use this switch if you want to delete all removable user profiles on the computer.")]
+        [switch]$All,
+        [Parameter(Mandatory = $false, ParameterSetName = 'AllProfiles', HelpMessage = "Enter one or more user profile names that should be excluded when -All is used.")]
+        [ValidateNotNullOrEmpty()]
         [string[]]$Exclude
     )
 
     begin {
-        Test-RSServiceModule -CallerName $MyInvocation.MyCommand.Name
         $jobReturnMessage = [System.Collections.Generic.List[string]]::new()
-        $jobDelete = [System.Collections.Generic.List[object]]::new()
     }
 
     process {
-        $cimSession = $null
+        Write-Verbose "Collecting user profiles from $ComputerName"
 
         try {
-            Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
-            $cimSession = New-CimSession -ComputerName $ComputerName -ErrorAction Stop
-            $getAllProfiles = Get-CimInstance -CimSession $cimSession -ClassName Win32_UserProfile -ErrorAction Stop | Where-Object { $_.Special -eq $false }
+            $getAllProfiles = Get-RSUserProfileInventory -ComputerName $ComputerName
         }
         catch {
-            Write-Error "${ComputerName}: $($PSItem.Exception.Message)"
+            Write-Error "Failed to retrieve user profiles from ${ComputerName}: $($PSItem.Exception.Message)"
             return
         }
 
-        try {
-            if ($All) {
-                foreach ($_profile in $getAllProfiles) {
-                    if ($null -eq $_profile.LocalPath) {
-                        [void]$jobReturnMessage.Add("Skipped a profile on $ComputerName because LocalPath was empty")
-                        continue
-                    }
-
-                    $userNameFromPath = if ($null -ne $_profile.LocalPath) { Split-Path -Path $_profile.LocalPath -Leaf }
-                    $checkProfile = Confirm-RSProfile -UserName $userNameFromPath -ProfileData $getAllProfiles -Exclude $Exclude
-
-                    if ($checkProfile.ReturnCode -eq 0) {
-                        $job = Start-ThreadJob -Name $userNameFromPath -ThrottleLimit 50 -ArgumentList $_profile, $userNameFromPath -ScriptBlock {
-                            param(
-                                $Profile,
-                                [string]$UserName
-                            )
-
-                            try {
-                                Write-Verbose "Deleting user profile $UserName..."
-                                $Profile | Remove-CimInstance -ErrorAction Stop
-                                Write-Verbose "User profile $UserName is now deleted!"
-                            }
-                            catch {
-                                Write-Error "${UserName}: $($PSItem.Exception.Message)"
-                            }
-                        }
-
-                        [void]$jobDelete.Add($job)
-                    }
-                    else {
-                        [void]$jobReturnMessage.Add("$($checkProfile.Message)")
-                    }
-                }
-            }
-            else {
-                foreach ($_profile in $UserName) {
-                    $checkProfile = Confirm-RSProfile -UserName $_profile -ProfileData $getAllProfiles -Exclude $Exclude
-
-                    if ($checkProfile.ReturnCode -eq 0) {
-                        $getProfile = $getAllProfiles |
-                            Where-Object { $null -ne $_.LocalPath -and (Split-Path -Path $_.LocalPath -Leaf) -eq $_profile } |
-                            Select-Object -First 1
-
-                        if ($null -eq $getProfile) {
-                            [void]$jobReturnMessage.Add("User profile $($_profile) could not be resolved for deletion")
-                            continue
-                        }
-
-                        $job = Start-ThreadJob -Name $_profile -ThrottleLimit 50 -ArgumentList $getProfile, $_profile -ScriptBlock {
-                            param(
-                                $Profile,
-                                [string]$UserName
-                            )
-
-                            try {
-                                Write-Verbose "Deleting user profile $UserName..."
-                                $Profile | Remove-CimInstance -ErrorAction Stop
-                                Write-Verbose "The user profile $UserName is now deleted!"
-                            }
-                            catch {
-                                Write-Error "${UserName}: $($PSItem.Exception.Message)"
-                            }
-                        }
-
-                        [void]$jobDelete.Add($job)
-                    }
-                    else {
-                        [void]$jobReturnMessage.Add("$($checkProfile.Message)")
-                    }
-                }
-            }
+        if ($getAllProfiles.Count -eq 0) {
+            Write-Verbose "No removable user profiles were found on $ComputerName"
+            return
         }
-        finally {
-            if ($null -ne $cimSession) {
-                $cimSession | Remove-CimSession -ErrorAction SilentlyContinue
+
+        # Build a lookup table once so validation and deletion stay fast even with many profiles.
+        $profileLookup = Get-RSProfileLookup -ProfileData $getAllProfiles
+        $targetUsers = if ($All) { $profileLookup.Keys | Sort-Object } else { $UserName | Sort-Object -Unique }
+
+        foreach ($profileName in $targetUsers) {
+            $confirmProfileParams = @{
+                UserName    = $profileName
+                ProfileData = $profileLookup
+            }
+
+            if ($PSBoundParameters.ContainsKey('Exclude')) {
+                $confirmProfileParams.Exclude = $Exclude
+            }
+
+            $checkProfile = Confirm-RSProfile @confirmProfileParams
+            if ($checkProfile.ReturnCode -ne 0) {
+                [void]$jobReturnMessage.Add($checkProfile.Message)
+                continue
+            }
+
+            $target = "$ComputerName\$profileName"
+
+            if (-not $PSCmdlet.ShouldProcess($target, "Remove user profile and associated data from disk")) {
+                continue
+            }
+
+            try {
+                # Delete in-process so WhatIf/Confirm/Verbose behave consistently and avoid per-profile job overhead.
+                Write-Verbose "Removing user profile $profileName from $ComputerName"
+                $profileLookup[$profileName] | Remove-CimInstance -ErrorAction Stop
+                Write-Verbose "User profile $profileName was removed from $ComputerName"
+            }
+            catch {
+                Write-Error "${profileName}: $($PSItem.Exception.Message)"
             }
         }
     }
 
     end {
-        if ($jobDelete.Count -gt 0) {
-            try {
-                Receive-Job -Job $jobDelete -AutoRemoveJob -Wait -ErrorAction Stop
-            }
-            catch {
-                Write-Error $PSItem.Exception.Message
-            }
-        }
-
         if ($jobReturnMessage.Count -gt 0) {
             $jobReturnMessage
         }
@@ -345,41 +366,43 @@ Function Remove-RSUserProfile {
 Function Confirm-RSProfile {
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $true, HelpMessage = "Username of the user you want to verify")]
+        [Parameter(Mandatory = $true, HelpMessage = "Enter the user profile name that you want to verify.")]
         [ValidateNotNullOrEmpty()]
         [string]$UserName,
-        [Parameter(Mandatory = $true, HelpMessage = ".")]
-        [ValidateNotNullOrEmpty()]
+        [Parameter(Mandatory = $true, HelpMessage = "Provide the profile collection or lookup table that should be searched.")]
+        [ValidateNotNull()]
         $ProfileData,
-        [Parameter(Mandatory = $false, HelpMessage = "Enter the username you want to exclude from deletion")]
-        [String[]]$Exclude
+        [Parameter(Mandatory = $false, HelpMessage = "Enter one or more user profile names that should be excluded from deletion.")]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Exclude
     )
 
-    begin {
-    }
-
     process {
-        $checkExists = $ProfileData |
-            Where-Object { $null -ne $_.LocalPath -and (Split-Path -Path $_.LocalPath -Leaf) -eq $UserName } |
-            Select-Object -First 1
+        # Keep supporting both raw profile collections and lookup tables for direct callers of Confirm-RSProfile.
+        $checkExists = if ($ProfileData -is [System.Collections.IDictionary]) {
+            $ProfileData[$UserName]
+        }
+        else {
+            $ProfileData |
+                Where-Object { $null -ne $_.LocalPath -and (Get-RSProfileUserName -LocalPath $_.LocalPath) -eq $UserName } |
+                Select-Object -First 1
+        }
+
         $checkExclude = $null -ne $Exclude -and $Exclude -contains $UserName
 
         if ($null -ne $checkExists -and -not $checkExclude) {
-            if ($checkExists.Loaded -eq $true) {
-                Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) is loaded and cannot be removed"
+            if ($checkExists.Loaded) {
+                New-RSReturnMessage -ReturnType Error -Message "User profile $UserName is loaded and cannot be removed"
             }
             else {
-                Get-ReturnMessageTemplate -ReturnType Success -Message "User profile $($UserName) exists and is not loaded"
+                New-RSReturnMessage -ReturnType Success -Message "User profile $UserName exists and is not loaded"
             }
         }
         elseif ($null -ne $checkExists -and $checkExclude) {
-            Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) is excluded and will not be deleted"
+            New-RSReturnMessage -ReturnType Error -Message "User profile $UserName is excluded and will not be deleted"
         }
         else {
-            Get-ReturnMessageTemplate -ReturnType Error -Message "User profile $($UserName) does not exist on the computer"
+            New-RSReturnMessage -ReturnType Error -Message "User profile $UserName does not exist on the computer"
         }
-    }
-
-    end {
     }
 }
