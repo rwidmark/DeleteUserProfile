@@ -5,9 +5,6 @@ Function Test-RSServiceModule {
         [string]$CallerName = "This function"
     )
 
-    begin {
-    }
-
     process {
         try {
             Get-InstalledModule -Name "rsServiceModule" -ErrorAction Stop | Out-Null
@@ -15,9 +12,6 @@ Function Test-RSServiceModule {
         catch {
             throw "$CallerName requires rsServiceModule to be installed"
         }
-    }
-
-    end {
     }
 }
 
@@ -109,7 +103,11 @@ Function Get-RSUserProfile {
                                 $notUsedFor.Add("minutes", "$($timeSpan.Minutes)")
                             }
 
-                            if ($notUsedFor.Count -eq 0) {
+                            if (
+                                $timeSpan.Days -eq 0 -and
+                                $timeSpan.Hours -eq 0 -and
+                                $timeSpan.Minutes -eq 0
+                            ) {
                                 $notUsedFor.Add("minutes", "0")
                             }
                         }
