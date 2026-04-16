@@ -147,6 +147,7 @@ Function Get-RSUserProfile {
                 $cimSession = $null
 
                 try {
+                    # Capture one reference time per computer so every profile in the same batch uses the same age calculation.
                     $currentDate = Get-Date
                     Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
                     $cimSession = New-CimSession -ComputerName $ComputerName -ErrorAction Stop
@@ -331,7 +332,7 @@ Function Remove-RSUserProfile {
 
             $target = "$ComputerName\$profileName"
 
-            if (-not $PSCmdlet.ShouldProcess($target, "Remove user profile")) {
+            if (-not $PSCmdlet.ShouldProcess($target, "Remove user profile and associated data from disk")) {
                 continue
             }
 
