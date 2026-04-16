@@ -308,7 +308,7 @@ Function Remove-RSUserProfile {
             $getAllProfiles = Get-RSUserProfileInventory -ComputerName $ComputerName
         }
         catch {
-            Write-Error "${ComputerName}: $($PSItem.Exception.Message)"
+            Write-Error "Failed to retrieve user profiles from ${ComputerName}: $($PSItem.Exception.Message)"
             return
         }
 
@@ -336,6 +336,7 @@ Function Remove-RSUserProfile {
             }
 
             try {
+                # Delete in-process so WhatIf/Confirm/Verbose behave consistently and avoid per-profile job overhead.
                 Write-Verbose "Removing user profile $profileName from $ComputerName"
                 $profileLookup[$profileName] | Remove-CimInstance -ErrorAction Stop
                 Write-Verbose "User profile $profileName was removed from $ComputerName"
@@ -368,6 +369,7 @@ Function Confirm-RSProfile {
     )
 
     process {
+        # Keep supporting both raw profile collections and lookup tables for direct callers of Confirm-RSProfile.
         $checkExists = if ($ProfileData -is [System.Collections.IDictionary]) {
             $ProfileData[$UserName]
         }
