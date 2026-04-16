@@ -75,7 +75,13 @@ Function Get-RSUserProfile {
                 $cimSession = $null
 
                 try {
-                    Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
+                    try {
+                        Test-WSMan -ComputerName $ComputerName -ErrorAction Stop | Out-Null
+                    }
+                    catch {
+                        throw "Failed to establish WSMan connection to $ComputerName"
+                    }
+
                     $cimSession = New-CimSession -ComputerName $ComputerName -ErrorAction Stop
 
                     $getUserData = Get-CimInstance -CimSession $cimSession -ClassName Win32_UserProfile -ErrorAction Stop |
@@ -115,7 +121,7 @@ Function Get-RSUserProfile {
                         [PSCustomObject]@{
                             Computer  = $ComputerName
                             UserName  = if ($null -ne $_profile.LocalPath) { Split-Path -Path $_profile.LocalPath -Leaf }
-                            LocalPath = $_profile.LocalPath
+                            LocalPath = if ($null -ne $_profile.LocalPath) { $_profile.LocalPath }
                             LastUsed  = if ($null -ne $_profile.LastUseTime) { ($_profile.LastUseTime -as [DateTime]).ToString("yyyy-MM-dd HH:mm") }
                             Loaded    = $_profile.Loaded
                             NotUsed   = if ($notUsedFor.Count -gt 0) { $notUsedFor } else { "N/A" }
@@ -243,6 +249,11 @@ Function Remove-RSUserProfile {
         try {
             if ($All) {
                 foreach ($_profile in $getAllProfiles) {
+                    if ($null -eq $_profile.LocalPath) {
+                        [void]$jobReturnMessage.Add("Skipped a profile on $ComputerName because LocalPath was empty")
+                        continue
+                    }
+
                     $userNameFromPath = if ($null -ne $_profile.LocalPath) { Split-Path -Path $_profile.LocalPath -Leaf }
                     $checkProfile = Confirm-RSProfile -UserName $userNameFromPath -ProfileData $getAllProfiles -Exclude $Exclude
 
@@ -275,7 +286,9 @@ Function Remove-RSUserProfile {
                     $checkProfile = Confirm-RSProfile -UserName $_profile -ProfileData $getAllProfiles -Exclude $Exclude
 
                     if ($checkProfile.ReturnCode -eq 0) {
-                        $getProfile = $getAllProfiles | Where-Object { (Split-Path -Path $_.LocalPath -Leaf) -eq $_profile } | Select-Object -First 1
+                        $getProfile = $getAllProfiles |
+                            Where-Object { $null -ne $_.LocalPath -and (Split-Path -Path $_.LocalPath -Leaf) -eq $_profile } |
+                            Select-Object -First 1
 
                         if ($null -eq $getProfile) {
                             [void]$jobReturnMessage.Add("User profile $($_profile) could not be resolved for deletion")
@@ -346,8 +359,10 @@ Function Confirm-RSProfile {
     }
 
     process {
-        $checkExists = $ProfileData | Where-Object { (Split-Path -Path $_.LocalPath -Leaf) -eq $UserName } | Select-Object -First 1
-        $checkExclude = @($Exclude) -contains $UserName
+        $checkExists = $ProfileData |
+            Where-Object { $null -ne $_.LocalPath -and (Split-Path -Path $_.LocalPath -Leaf) -eq $UserName } |
+            Select-Object -First 1
+        $checkExclude = $null -ne $Exclude -and $Exclude -contains $UserName
 
         if ($null -ne $checkExists -and -not $checkExclude) {
             if ($checkExists.Loaded -eq $true) {
